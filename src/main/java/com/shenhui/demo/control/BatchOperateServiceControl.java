@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -22,8 +24,8 @@ public class BatchOperateServiceControl {
     @Autowired
     BatchOperateService batchOperateService;
 
-    @GetMapping("/batchOperateServiceControl")
-    public String batchOperateServiceControl() {
+    @GetMapping("/batchOperate")
+    public String batchOperate() {
         Function<String, String> test1 = new Function<String, String>() {
             @Override
             public String apply(String s) {
@@ -36,6 +38,36 @@ public class BatchOperateServiceControl {
                 .timeout(10L).timeoutUnit(TimeUnit.SECONDS).needAllSuccess(false).build());
 
         return JSON.toJSONString(list);
+    }
+
+    @GetMapping("/singleOperate")
+    public String singleOperate() throws ExecutionException, InterruptedException {
+        Function<String, String> test1 = new Function<String, String>() {
+            @Override
+            public String apply(String s) {
+                log.error("入参1: {}", s);
+                return "出参1: "+s;
+            }
+        };
+
+        Function<String, String> test2 = new Function<String, String>() {
+            @Override
+            public String apply(String s) {
+                log.error("入参2: {}", s);
+                return "出参2: "+s;
+            }
+        };
+
+        Future<String> future1 = batchOperateService.singleOperate(test1, "1");
+        Future<String> future2 = batchOperateService.singleOperate(test1, "2");
+
+        while (true) {
+            if (future1.isDone() && future2.isDone()) {
+                break;
+            }
+        }
+
+        return JSON.toJSONString(Lists.newArrayList(future1.get(), future2.get()));
     }
 
 }

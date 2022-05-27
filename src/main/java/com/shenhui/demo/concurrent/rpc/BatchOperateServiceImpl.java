@@ -21,6 +21,27 @@ public class BatchOperateServiceImpl implements BatchOperateService{
     private TracedExecutorService tracedExecutorService;
 
     @Override
+    public <T, R> Future<R> singleOperate(Function<T, R> function, T request) {
+        log.info("batchOperate start function:{} request:{}", function, JSON.toJSONString(request));
+
+        // 初始化
+        int numberOfRequests = 1;
+
+        // 使用countDownLatch进行并发调用管理
+        CountDownLatch countDownLatch = new CountDownLatch(numberOfRequests);
+        List<BatchOperateCallable<T, R>> callables = Lists.newArrayListWithExpectedSize(numberOfRequests);
+
+        // 分别提交异步线程执行
+        BatchOperateCallable<T, R> batchOperateCallable = new BatchOperateCallable<>(countDownLatch, function, request);
+        callables.add(batchOperateCallable);
+
+        // 提交异步线程执行
+        Future<R> future = tracedExecutorService.submit(ThreadPoolName.RPC_EXECUTOR, batchOperateCallable);
+
+        return future;
+    }
+
+    @Override
     public <T, R> List<R> batchOperate(Function<T, R> function, List<T> requests, BatchOperateConfig config) {
         log.info("batchOperate start function:{} request:{} config:{}", function, JSON.toJSONString(requests), JSON.toJSONString(config));
 

@@ -1,6 +1,7 @@
 package com.shenhui.demo.concurrent.rpc;
 
 import java.util.List;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 
 public interface BatchOperateService {
@@ -13,5 +14,8 @@ public interface BatchOperateService {
      * @return 全部响应
      */
     <T, R> List<R> batchOperate(Function<T, R> function, List<T> requests, BatchOperateConfig config);
+
+    <T, R> Future<R> singleOperate(Function<T, R> function, T request);
+
 
 }
