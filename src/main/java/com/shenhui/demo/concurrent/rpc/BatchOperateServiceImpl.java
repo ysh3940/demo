@@ -22,20 +22,16 @@ public class BatchOperateServiceImpl implements BatchOperateService{
 
     @Override
     public <T, R> Future<R> singleOperate(Function<T, R> function, T request) {
-        log.info("batchOperate start function:{} request:{}", function, JSON.toJSONString(request));
+        log.error("batchOperate start function:{} request:{}", function, JSON.toJSONString(request));
 
-        // 初始化
         int numberOfRequests = 1;
 
-        // 使用countDownLatch进行并发调用管理
         CountDownLatch countDownLatch = new CountDownLatch(numberOfRequests);
         List<BatchOperateCallable<T, R>> callables = Lists.newArrayListWithExpectedSize(numberOfRequests);
 
-        // 分别提交异步线程执行
         BatchOperateCallable<T, R> batchOperateCallable = new BatchOperateCallable<>(countDownLatch, function, request);
         callables.add(batchOperateCallable);
 
-        // 提交异步线程执行
         Future<R> future = tracedExecutorService.submit(ThreadPoolName.RPC_EXECUTOR, batchOperateCallable);
 
         return future;
@@ -43,43 +39,34 @@ public class BatchOperateServiceImpl implements BatchOperateService{
 
     @Override
     public <T, R> List<R> batchOperate(Function<T, R> function, List<T> requests, BatchOperateConfig config) {
-        log.info("batchOperate start function:{} request:{} config:{}", function, JSON.toJSONString(requests), JSON.toJSONString(config));
+        log.error("batchOperate start function:{} request:{} config:{}", function, JSON.toJSONString(requests), JSON.toJSONString(config));
 
-        // 当前时间
         long startTime = System.currentTimeMillis();
 
-        // 初始化
         int numberOfRequests = requests.size();
 
-        // 所有异步线程执行结果
         List<Future<R>> futures = Lists.newArrayListWithExpectedSize(numberOfRequests);
-        // 使用countDownLatch进行并发调用管理
         CountDownLatch countDownLatch = new CountDownLatch(numberOfRequests);
         List<BatchOperateCallable<T, R>> callables = Lists.newArrayListWithExpectedSize(numberOfRequests);
 
-        // 分别提交异步线程执行
         for (T request : requests) {
             BatchOperateCallable<T, R> batchOperateCallable = new BatchOperateCallable<>(countDownLatch, function, request);
             callables.add(batchOperateCallable);
 
-            // 提交异步线程执行
             Future<R> future = tracedExecutorService.submit(ThreadPoolName.RPC_EXECUTOR, batchOperateCallable);
             futures.add(future);
         }
 
         try {
-            // 等待全部执行完成，如果超时且要求全部调用成功，则抛出异常
             boolean allFinish = countDownLatch.await(config.getTimeout(), config.getTimeoutUnit());
             if (!allFinish && config.getNeedAllSuccess()) {
                 throw new RuntimeException("batchOperate timeout and need all success");
             }
-            // 遍历执行结果，如果有的执行失败且要求全部调用成功，则抛出异常
             boolean allSuccess = callables.stream().map(BatchOperateCallable::isSuccess).allMatch(BooleanUtils::isTrue);
             if (!allSuccess && config.getNeedAllSuccess()) {
                 throw new RuntimeException("some batchOperate have failed and need all success");
             }
 
-            // 获取所有异步调用结果并返回
             List<R> result = Lists.newArrayList();
             for (Future<R> future : futures) {
                 R r = future.get();
@@ -92,7 +79,7 @@ public class BatchOperateServiceImpl implements BatchOperateService{
             throw new RuntimeException(e.getMessage());
         } finally {
             double duration = (System.currentTimeMillis() - startTime) / 1000.0;
-            log.info("batchOperate finish duration:{}s function:{} request:{} config:{}", duration, function, JSON.toJSONString(requests), JSON.toJSONString(config));
+            log.error("batchOperate finish duration:{}s function:{} request:{} config:{}", duration, function, JSON.toJSONString(requests), JSON.toJSONString(config));
         }
     }
 }

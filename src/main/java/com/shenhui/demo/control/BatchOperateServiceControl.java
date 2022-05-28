@@ -30,7 +30,7 @@ public class BatchOperateServiceControl {
             @Override
             public String apply(String s) {
                 log.error("入参: {}", s);
-                return "出参: "+s;
+                return "出参: " + s;
             }
         };
 
@@ -46,7 +46,7 @@ public class BatchOperateServiceControl {
             @Override
             public String apply(String s) {
                 log.error("入参1: {}", s);
-                return "出参1: "+s;
+                return "出参1: " + s;
             }
         };
 
@@ -54,7 +54,7 @@ public class BatchOperateServiceControl {
             @Override
             public String apply(String s) {
                 log.error("入参2: {}", s);
-                return "出参2: "+s;
+                return "出参2: " + s;
             }
         };
 

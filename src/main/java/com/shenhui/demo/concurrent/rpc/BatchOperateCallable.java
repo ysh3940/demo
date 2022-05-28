@@ -12,9 +12,6 @@ public class BatchOperateCallable<T, R> implements Callable<R> {
 
     private final T request;
 
-    /**
-     * 该线程处理是否成功
-     */
     private boolean success;
 
     public BatchOperateCallable(CountDownLatch countDownLatch, Function<T, R> function, T request) {
