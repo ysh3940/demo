@@ -21,16 +21,10 @@ public class BatchOperateServiceImpl implements BatchOperateService{
     private TracedExecutorService tracedExecutorService;
 
     @Override
-    public <T, R> Future<R> singleOperate(Function<T, R> function, T request) {
-        log.error("batchOperate start function:{} request:{}", function, JSON.toJSONString(request));
-
-        int numberOfRequests = 1;
-
-        CountDownLatch countDownLatch = new CountDownLatch(numberOfRequests);
-        List<BatchOperateCallable<T, R>> callables = Lists.newArrayListWithExpectedSize(numberOfRequests);
+    public <T, R> Future<R> singleOperate(Function<T, R> function, T request, CountDownLatch countDownLatch) {
+        log.error("singleOperate start function:{} request:{}", function, JSON.toJSONString(request));
 
         BatchOperateCallable<T, R> batchOperateCallable = new BatchOperateCallable<>(countDownLatch, function, request);
-        callables.add(batchOperateCallable);
 
         Future<R> future = tracedExecutorService.submit(ThreadPoolName.RPC_EXECUTOR, batchOperateCallable);
 
@@ -43,6 +37,9 @@ public class BatchOperateServiceImpl implements BatchOperateService{
 
         long startTime = System.currentTimeMillis();
 
+        if (requests == null || requests.size() == 0) {
+            return Lists.newArrayList();
+        }
         int numberOfRequests = requests.size();
 
         List<Future<R>> futures = Lists.newArrayListWithExpectedSize(numberOfRequests);
@@ -60,11 +57,13 @@ public class BatchOperateServiceImpl implements BatchOperateService{
         try {
             boolean allFinish = countDownLatch.await(config.getTimeout(), config.getTimeoutUnit());
             if (!allFinish && config.getNeedAllSuccess()) {
-                throw new RuntimeException("batchOperate timeout and need all success");
+                log.error("batchOperate timeout and need all success");
+                return Lists.newArrayList();
             }
             boolean allSuccess = callables.stream().map(BatchOperateCallable::isSuccess).allMatch(BooleanUtils::isTrue);
             if (!allSuccess && config.getNeedAllSuccess()) {
-                throw new RuntimeException("some batchOperate have failed and need all success");
+                log.error("some batchOperate have failed and need all success");
+                return Lists.newArrayList();
             }
 
             List<R> result = Lists.newArrayList();
@@ -76,10 +75,13 @@ public class BatchOperateServiceImpl implements BatchOperateService{
             }
             return result;
         } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
+            log.error("batchOperate exception :{}", e.getMessage(), e);
         } finally {
             double duration = (System.currentTimeMillis() - startTime) / 1000.0;
             log.error("batchOperate finish duration:{}s function:{} request:{} config:{}", duration, function, JSON.toJSONString(requests), JSON.toJSONString(config));
         }
+        return Lists.newArrayList();
     }
+
+
 }

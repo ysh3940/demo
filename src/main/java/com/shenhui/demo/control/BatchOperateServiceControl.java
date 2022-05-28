@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -41,7 +42,7 @@ public class BatchOperateServiceControl {
     }
 
     @GetMapping("/singleOperate")
-    public String singleOperate() throws ExecutionException, InterruptedException {
+    public String singleOperate() throws InterruptedException, ExecutionException {
         Function<String, String> test1 = new Function<String, String>() {
             @Override
             public String apply(String s) {
@@ -58,14 +59,12 @@ public class BatchOperateServiceControl {
             }
         };
 
-        Future<String> future1 = batchOperateService.singleOperate(test1, "1");
-        Future<String> future2 = batchOperateService.singleOperate(test1, "2");
+        CountDownLatch countDownLatch = new CountDownLatch(2);
 
-        while (true) {
-            if (future1.isDone() && future2.isDone()) {
-                break;
-            }
-        }
+        Future<String> future1 = batchOperateService.singleOperate(test1, "1", countDownLatch);
+        Future<String> future2 = batchOperateService.singleOperate(test1, "2", countDownLatch);
+
+        countDownLatch.await();
 
         return JSON.toJSONString(Lists.newArrayList(future1.get(), future2.get()));
     }
